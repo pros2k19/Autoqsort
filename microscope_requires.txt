@@ -1,0 +1,4 @@
+# Tested on Python 3.4.4
+pyautogui==0.9.25
+pillow==2.9.0
+pyscreeze==0.1.7
