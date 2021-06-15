@@ -1,14 +1,25 @@
-from Stahl import Stahl, QSortStahl
-
+import logging
 from tango.server import Device, attribute
+from tango import DevState
+
+from .device import Stahl, QSortStahl
+
+logger = logging.getLogger(__name__)
 
 
 class QSortStahlDevice(Device):
     def init_device(self):
-        super().init_device()
-        stahl = Stahl()
-        qsort_stahl = QSortStahl(stahl)
+        try:
+            stahl = Stahl()
+            qsort_stahl = QSortStahl(stahl)
+        except Exception as e:
+            logger.exception("error initializing stahl device")
+            raise
         self._dev = qsort_stahl
+        logger.debug("before super().init_device()")
+        super().init_device()
+        self.set_state(DevState.ON)
+        logger.debug("end of init_device")
 
     @attribute(label='Heat', dtype=float)
     def heat(self):
@@ -49,7 +60,3 @@ class QSortStahlDevice(Device):
     @s2.write
     def s2(self, s2):
         self._dev.set_s2(s2)
-
-
-if __name__ == "__main__":
-    QSortStahlDevice.run_server()
