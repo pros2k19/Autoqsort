@@ -3,6 +3,10 @@ import time
 
 from tango.server import Device, command, attribute, device_property
 import rpyc
+from PIL import Image
+import numpy as np
+
+from qsort_infra.templatematch import find_match
 
 
 TEMPLATE_DIR = os.path.dirname(__file__)
@@ -13,12 +17,12 @@ class TEMSpyGUI:
         self._conn = rpyc.classic.connect(host)
         self._templates = {
             'PresetXL': (
-                self._remote_image('XL_active.png'),
-                self._remote_image('XL_inactive.png')
+                np.array(self._local_image('XL_active.png')),
+                np.array(self._local_image('XL_inactive.png'))
             ),
             'Align_XS': (
-                self._remote_image('Align_XS_active.png'),
-                self._remote_image('Align_XS_inactive.png')
+                np.array(self._local_image('Align_XS_active.png')),
+                np.array(self._local_image('Align_XS_inactive.png'))
             )
         }
         self.snapshot()
@@ -34,15 +38,21 @@ class TEMSpyGUI:
             _io = self._conn.modules['io']
             return Image.open(_io.BytesIO(data))
 
+    def _local_image(self, template):
+        return Image.open(os.path.join(TEMPLATE_DIR, template))
+
     def snapshot(self):
         _pyautogui = self._conn.modules['pyautogui']
-        screen = _pyautogui.screenshot()
+        screen_remote = _pyautogui.screenshot()
+        screen_bytes = screen_remote.tobytes()
+        screen_image = Image.frombytes(screen_remote.mode, screen_remote.size, screen_bytes)
+        screen = np.array(screen_image)
         self._locations = {}
         for key in self.keys():
             active, inactive = self._templates[key]
             # FIXME speed up with fast correlation?
-            window_locations = list(_pyautogui.locateAll(inactive, screen, grayscale=True))
-            window_locations_active = list(_pyautogui.locateAll(active, screen, grayscale=True))
+            window_locations = find_match(inactive, screen)
+            window_locations_active = find_match(active, screen)
             if window_locations and window_locations_active:
                 raise RuntimeError("Both active and inactive TEMSpy %s titles found!" % key)
             elif (not window_locations) and (not window_locations_active):
@@ -50,9 +60,9 @@ class TEMSpyGUI:
                 continue
             if window_locations_active:
                 window_locations = window_locations_active
-            # x, y
+            # y, x -> x, y
             print(key)
-            self._locations[key] = window_locations[0][:2]
+            self._locations[key] = window_locations[0][1], window_locations[0][0]
     
     @property
     def PresetXL(self):

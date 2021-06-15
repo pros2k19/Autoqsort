@@ -9,7 +9,7 @@ import rpyc
 
 from qsort_infra.templatematch import find_match
 
-from dac import serialize_dac
+from .dac import serialize_dac
 
 TEMPLATE_DIR = os.path.dirname(__file__)
 logger = logging.getLogger(__name__)
@@ -44,11 +44,10 @@ class RemoteCorrectorGUI:
 
     def snapshot(self):
         _pyautogui = self._conn.modules['pyautogui']
-        screen = _pyautogui.screenshot()
-        # FIXME speed up with fast correlation?
-        print(self._corr_file.shape)
-        print(self._corr_file_active.shape)
-        print(screen)
+        screen_remote = _pyautogui.screenshot()
+        screen_bytes = screen_remote.tobytes()
+        screen_image = Image.frombytes(screen_remote.mode, screen_remote.size, screen_bytes)
+        screen = np.array(screen_image)
         window_locations = find_match(self._corr_file, screen)
         window_locations_active = find_match(self._corr_file_active, screen)
         if window_locations and window_locations_active:
@@ -57,8 +56,8 @@ class RemoteCorrectorGUI:
             raise RuntimeError("No corrector GUI title found!")
         if window_locations_active:
             window_locations = window_locations_active
-        # x, y
-        self._location = window_locations[0]
+        # y, x-> x, y
+        self._location = window_locations[0][1], window_locations[0][0]
 
     def load_dac(self, dacfile):
         _pyautogui = self._conn.modules['pyautogui']
@@ -138,7 +137,4 @@ class CorrectorDevice(Device):
         self._corrector_device.set('ADL', value)
         print("ADL set")
 
-
-if __name__ == '__main__':
-    g = RemoteCorrectorGUI()
 

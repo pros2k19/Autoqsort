@@ -2,7 +2,7 @@ import numpy as np
 import numba
 
 
-@numba.njit(nogil=True)
+@numba.njit(nogil=True, cache=True)
 def equal(a1, a2):
     acc = 0
     for y in range(a1.shape[0]):
@@ -13,7 +13,7 @@ def equal(a1, a2):
                     return (False, y, x, i)
     return (True, y, x, i)
 
-@numba.njit
+@numba.njit(cache=True)
 def find_match(needle, haystack):
     assert len(needle.shape) == 3
     assert len(haystack.shape) == 3
