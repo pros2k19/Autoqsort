@@ -1,5 +1,5 @@
 import logging
-from tango.server import Device, attribute
+from tango.server import Device, attribute, command
 from tango import DevState
 
 from .device import Stahl, QSortStahl
@@ -20,6 +20,20 @@ class QSortStahlDevice(Device):
         super().init_device()
         self.set_state(DevState.ON)
         logger.debug("end of init_device")
+
+    @command
+    def set_zero(self):
+        self._dev.set_zero()
+
+    @command
+    def disconnect(self):
+        self._dev.close()
+        self.set_state(DevState.OFF)
+
+    @command
+    def connect(self):
+        self._dev.init()
+        self.set_state(DevState.ON)
 
     @attribute(label='Heat', dtype=float)
     def heat(self):
